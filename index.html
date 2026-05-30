@@ -35,6 +35,7 @@
             border-radius: 16px;
             padding: 8px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            min-height: 150px;
         }
         .file-item {
             display: flex;
@@ -88,21 +89,10 @@
             display: none;
             white-space: nowrap;
         }
-        .uploading-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            border-bottom: 1px solid #f0f0f0;
-            background: #fafafa;
-        }
-        .uploading-name {
-            font-size: 14px;
-            color: #666;
-        }
-        .uploading-progress {
-            font-size: 12px;
-            color: #409eff;
+        .empty-tip {
+            text-align: center;
+            padding: 40px;
+            color: #999;
         }
     </style>
 </head>
@@ -111,7 +101,9 @@
         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📎 选择文件</button>
         <input type="file" id="fileInput" style="display: none;" multiple>
     </div>
-    <div class="file-list" id="fileList"></div>
+    <div class="file-list" id="fileList">
+        <div class="empty-tip">暂无文件</div>
+    </div>
     <div id="toast" class="toast"></div>
 
     <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
@@ -125,8 +117,8 @@
         const token = getUrlParam('token');
         const UPLOAD_URL = 'https://xglwx.siglenlift.cn/testfile/api/Upload';
         
-        let uploadedFiles = []; // 只存储成功上传的文件
-        let uploadingCount = 0; // 正在上传的文件数量
+        // 只存储成功上传的文件
+        let successFiles = [];
 
         // --- 工具函数 ---
         function showToast(msg) {
@@ -146,15 +138,26 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // 只渲染成功的文件列表
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // 渲染文件列表（只显示成功文件）
         function renderFileList() {
             const container = document.getElementById('fileList');
-            if (uploadedFiles.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">暂无文件</div>';
+            if (successFiles.length === 0) {
+                container.innerHTML = '<div class="empty-tip">暂无文件</div>';
                 return;
             }
+            
             let html = '';
-            uploadedFiles.forEach((file, index) => {
+            successFiles.forEach((file, index) => {
                 html += `
                     <div class="file-item" data-index="${index}">
                         <div class="file-info">
@@ -167,12 +170,13 @@
             });
             container.innerHTML = html;
             
+            // 绑定删除事件
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const idx = parseInt(btn.getAttribute('data-index'));
-                    if (!isNaN(idx)) {
-                        uploadedFiles.splice(idx, 1);
+                    if (!isNaN(idx) && idx >= 0 && idx < successFiles.length) {
+                        successFiles.splice(idx, 1);
                         renderFileList();
                         showToast('已删除');
                     }
@@ -180,19 +184,8 @@
             });
         }
 
-        function escapeHtml(str) {
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        // --- 上传单个文件（失败不会添加到列表）---
+        // 上传单个文件 - 关键：只有成功才添加到 successFiles
         function uploadFile(file) {
-            uploadingCount++;
-            
             const formData = new FormData();
             formData.append('file', file);
 
@@ -203,13 +196,20 @@
             }
 
             xhr.onload = function() {
+                console.log('上传响应状态:', xhr.status);
+                console.log('上传响应内容:', xhr.responseText);
+                
                 if (xhr.status === 200) {
                     try {
                         const result = JSON.parse(xhr.responseText);
-                        const fileUrl = result.data?.url || result.url || '';
+                        console.log('解析结果:', result);
+                        
+                        // 根据你的后端实际返回结构调整这一行
+                        const fileUrl = result.data?.url || result.url || result.fileUrl || '';
+                        
                         if (fileUrl) {
-                            // ✅ 只有成功才添加到数组
-                            uploadedFiles.push({
+                            // ✅ 只有这里才添加文件到列表
+                            successFiles.push({
                                 name: file.name,
                                 url: fileUrl,
                                 size: formatFileSize(file.size)
@@ -217,24 +217,23 @@
                             renderFileList();
                             showToast(`${file.name} 上传成功`);
                         } else {
-                            // ❌ 没有 URL = 失败，不添加到列表
+                            // ❌ 没有文件地址，不上报成功
+                            console.error('未获取到文件URL');
                             showToast(`${file.name} 上传失败：未返回文件地址`);
                         }
                     } catch (e) {
-                        // ❌ 解析失败 = 失败，不添加到列表
-                        showToast(`${file.name} 上传失败：解析错误`);
+                        console.error('解析响应失败:', e);
+                        showToast(`${file.name} 上传失败：响应解析错误`);
                     }
                 } else {
-                    // ❌ HTTP 错误 = 失败，不添加到列表
+                    console.error('HTTP错误:', xhr.status);
                     showToast(`${file.name} 上传失败 (${xhr.status})`);
                 }
-                uploadingCount--;
             };
 
             xhr.onerror = function() {
-                // ❌ 网络错误 = 失败，不添加到列表
+                console.error('网络错误');
                 showToast(`${file.name} 网络错误，上传失败`);
-                uploadingCount--;
             };
 
             xhr.send(formData);
@@ -242,35 +241,50 @@
 
         // 选择文件处理
         document.getElementById('fileInput').addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (!files.length) return;
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
             showToast(`开始上传 ${files.length} 个文件...`);
-            for (let i = 0; i < files.length; i++) {
-                uploadFile(files[i]);
-            }
+            
+            // 逐个上传，每个文件独立处理，互不影响
+            files.forEach(file => {
+                uploadFile(file);
+            });
+            
+            // 清空 input，以便再次选择相同文件
             e.target.value = '';
         });
 
         // --- 完成并返回小程序 ---
         function finishAndReturn() {
             if (window.wx && window.wx.miniProgram) {
+                // 只传成功上传的文件
+                const filesToSend = successFiles.map(f => ({ 
+                    name: f.name, 
+                    url: f.url, 
+                    size: f.size 
+                }));
+                
+                console.log('返回文件列表:', filesToSend);
+                
                 window.wx.miniProgram.postMessage({
                     data: { 
                         type: 'upload_success', 
-                        files: uploadedFiles.map(f => ({ name: f.name, url: f.url, size: f.size }))
+                        files: filesToSend
                     }
                 });
+                
                 setTimeout(() => {
                     window.wx.miniProgram.navigateBack();
                 }, 150);
             } else {
-                alert('上传完成，请在微信小程序中使用');
+                alert('请在微信小程序中使用');
             }
         }
 
         // 添加完成按钮
         const btn = document.createElement('button');
-        btn.innerText = '✓ 完成并返回';
+        btn.innerText = '提交';
         btn.style.position = 'fixed';
         btn.style.bottom = '20px';
         btn.style.left = '20px';
@@ -282,14 +296,19 @@
         btn.style.fontSize = '16px';
         btn.style.color = '#409eff';
         btn.style.fontWeight = 'bold';
+        btn.style.cursor = 'pointer';
         btn.onclick = () => {
-            if (uploadedFiles.length > 0) {
+            if (successFiles.length > 0) {
                 finishAndReturn();
             } else {
                 showToast('请先上传文件');
             }
         };
         document.body.appendChild(btn);
+        
+        // 初始化显示
+        renderFileList();
+        console.log('页面初始化完成，上传地址:', UPLOAD_URL);
     </script>
 </body>
 </html>
