@@ -146,11 +146,6 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
-        /* 上传中状态（可选） */
-        .uploading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
     </style>
 </head>
 <body>
@@ -174,7 +169,6 @@
         const UPLOAD_URL = 'https://xglwx.siglenlift.cn/testfile/api/Upload';
         
         let successFiles = [];
-        let isUploading = false;
 
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toast');
@@ -246,7 +240,7 @@
                     if (!isNaN(idx) && idx >= 0 && idx < successFiles.length) {
                         successFiles.splice(idx, 1);
                         renderFileList();
-                        showToast('✓ 已删除');
+                        showToast('删除成功');
                     }
                 });
             });
@@ -277,20 +271,20 @@
                                 size: formatFileSize(file.size)
                             });
                             renderFileList();
-                            showToast(`✓ ${file.name} 上传成功`);
+                            showToast(`上传成功`);
                         } else {
-                            showToast(`✗ ${file.name} 上传失败：未返回地址`, true);
+                            showToast(`上传失败`, true);
                         }
                     } catch (e) {
-                        showToast(`✗ ${file.name} 解析失败`, true);
+                        showToast(`上传失败`, true);
                     }
                 } else {
-                    showToast(`✗ ${file.name} 上传失败 (${xhr.status})`, true);
+                    showToast(`上传失败`, true);
                 }
             };
 
             xhr.onerror = function() {
-                showToast(`✗ ${file.name} 网络错误`, true);
+                showToast(`上传失败`, true);
             };
 
             xhr.send(formData);
@@ -327,10 +321,9 @@
             }
         }
 
-        // 创建提交按钮
         const submitBtn = document.createElement('button');
         submitBtn.id = 'submitBtn';
-        submitBtn.innerText = '✓提交';
+        submitBtn.innerText = '提交';
         submitBtn.className = 'submit-btn disabled';
         submitBtn.disabled = true;
         submitBtn.onclick = finishAndReturn;
