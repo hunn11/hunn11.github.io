@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>文件上传</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+            padding: 20px;
+        }
+        .upload-area {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+        .upload-btn {
+            background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 44px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            max-width: 200px;
+            margin: 0 auto;
+        }
+        .file-list {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-name {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+            word-break: break-all;
+        }
+        .file-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+        .status-success { background: #e6f7e6; color: #52c41a; }
+        .status-error { background: #fff2f0; color: #ff4d4f; }
+        .status-uploading { background: #e6f7ff; color: #1890ff; }
+        .progress-bar {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #409eff, #67c23a);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .close-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 14px;
+            border-radius: 44px;
+            text-align: center;
+            color: #666;
+            font-size: 16px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 100;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-area">
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📎 选择文件</button>
+        <input type="file" id="fileInput" style="display: none;" multiple>
+    </div>
+    <div class="file-list" id="fileList"></div>
+    <div class="close-btn" onclick="closeWebView()">✓ 完成并返回</div>
+    <div id="toast" class="toast"></div>
+
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    <script>
+        // 获取 URL 参数
+        function getUrlParam(name) {
+            const reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
+            const r = window.location.search.substr(1).match(reg);
+            return r ? decodeURIComponent(r[2]) : null;
+        }
+
+        const token = getUrlParam('token');
+        const apiBase = getUrlParam('apiBase');
+        const uploadUrl = 'https://xglwx.siglenlift.cn/testfile' + '/api/Upload';
+        
+        let uploadedFiles = [];
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        }
+
+        function addFileToList(fileName, status, progress = 0, url = null) {
+            const fileListDiv = document.getElementById('fileList');
+            const fileId = 'file_' + Date.now() + '_' + Math.random();
+            const fileHtml = `
+                <div class="file-item" id="${fileId}">
+                    <div class="file-name">${fileName}</div>
+                    <div class="file-status status-${status}" id="${fileId}_status">${getStatusText(status)}</div>
+                    <div class="progress-bar" id="${fileId}_progress" style="display: ${status === 'uploading' ? 'block' : 'none'}">
+                        <div class="progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                </div>
+            `;
+            if (fileListDiv.children.length === 0) {
+                fileListDiv.innerHTML = fileHtml;
+            } else {
+                fileListDiv.insertAdjacentHTML('afterbegin', fileHtml);
+            }
+            return fileId;
+        }
+
+        function updateFileStatus(fileId, status, progress = null, url = null) {
+            const statusDiv = document.getElementById(fileId + '_status');
+            if (statusDiv) {
+                statusDiv.className = 'file-status status-' + status;
+                statusDiv.innerText = getStatusText(status);
+            }
+            const progressBar = document.getElementById(fileId + '_progress');
+            if (progressBar && progress !== null) {
+                if (status === 'uploading') {
+                    progressBar.style.display = 'block';
+                    progressBar.querySelector('.progress-fill').style.width = progress + '%';
+                } else {
+                    progressBar.style.display = 'none';
+                }
+            }
+            if (status === 'success' && url) {
+                uploadedFiles.push({ name: getFileNameFromId(fileId), url: url });
+            }
+        }
+
+        function getFileNameFromId(fileId) {
+            const fileItem = document.getElementById(fileId);
+            return fileItem ? fileItem.querySelector('.file-name').innerText : '';
+        }
+
+        function getStatusText(status) {
+            const map = { 'uploading': '上传中', 'success': '✓ 成功', 'error': '✗ 失败' };
+            return map[status] || status;
+        }
+
+        function uploadFile(file) {
+            const fileId = addFileToList(file.name, 'uploading', 0);
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', uploadUrl, true);
+            if (token) {
+                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            }
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    updateFileStatus(fileId, 'uploading', percent);
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        const result = JSON.parse(xhr.responseText);
+                        const fileUrl = result.data?.url || result.url || '';
+                        updateFileStatus(fileId, 'success', 100, fileUrl);
+                        showToast(file.name + ' 上传成功');
+                    } catch (e) {
+                        updateFileStatus(fileId, 'error');
+                        showToast(file.name + ' 解析失败');
+                    }
+                } else {
+                    updateFileStatus(fileId, 'error');
+                    showToast(file.name + ' 上传失败');
+                }
+            };
+
+            xhr.onerror = function() {
+                updateFileStatus(fileId, 'error');
+                showToast(file.name + ' 网络错误');
+            };
+
+            xhr.send(formData);
+        }
+
+        // 选择文件
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const files = e.target.files;
+            for (let i = 0; i < files.length; i++) {
+                uploadFile(files[i]);
+            }
+            e.target.value = '';
+        });
+
+        // 关闭 web-view 并返回小程序
+        function closeWebView() {
+            // 发送消息给小程序
+            if (window.wx && window.wx.miniProgram) {
+                window.wx.miniProgram.postMessage({
+                    data: { type: 'upload_success', files: uploadedFiles }
+                });
+                // 延迟一下再关闭，确保消息发送
+                setTimeout(() => {
+                    window.wx.miniProgram.navigateBack();
+                }, 100);
+            } else {
+                // 降级处理
+                if (typeof WeixinJSBridge !== 'undefined') {
+                    WeixinJSBridge.invoke('closeWindow', {});
+                }
+            }
+        }
+    </script>
+</body>
+</html>
