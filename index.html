@@ -3,334 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>文件上传</title>
+    <title>选择文件</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             background: #f5f7fb;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
-            padding: 20px;
-            padding-bottom: 100px;
-        }
-        /* 上传区域 */
-        .upload-area {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border-radius: 24px;
-            padding: 40px 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            border: 1px dashed #cbd5e1;
-            transition: all 0.3s ease;
-        }
-        .upload-area:active {
-            background: #eef2ff;
-        }
-        .upload-btn {
-            background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 48px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .upload-btn:active {
-            transform: scale(0.96);
-            box-shadow: 0 2px 6px rgba(64, 158, 255, 0.4);
-        }
-        /* 文件列表 */
-        .file-list {
-            background: #fff;
-            border-radius: 20px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-            min-height: 180px;
-            overflow: hidden;
-        }
-        .file-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            border-bottom: 1px solid #edf2f7;
-            transition: background 0.2s;
-        }
-        .file-item:hover {
-            background: #fafcff;
-        }
-        .file-info {
-            flex: 1;
-            overflow: hidden;
-        }
-        .file-name {
-            font-size: 15px;
-            font-weight: 500;
-            color: #1e293b;
-            word-break: break-all;
-            margin-bottom: 6px;
-        }
-        .file-size {
-            font-size: 12px;
-            color: #94a3b8;
-        }
-        .delete-btn {
-            background: #fef2f2;
-            color: #ef4444;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
-            flex-shrink: 0;
-            margin-left: 12px;
         }
-        .delete-btn:active {
-            background: #fee2e2;
-            transform: scale(0.92);
-        }
-        .empty-tip {
+        .upload-area {
+            background: white;
+            border-radius: 24px;
+            padding: 48px 32px;
             text-align: center;
-            padding: 56px 20px;
-            color: #94a3b8;
-            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 90%;
+            max-width: 350px;
         }
-        /* 提示消息 */
-        .toast {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(8px);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 40px;
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            font-size: 20px;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .sub {
+            color: #64748b;
             font-size: 14px;
-            z-index: 100;
+            margin-bottom: 28px;
+        }
+        .file-input {
             display: none;
-            white-space: nowrap;
-            font-weight: 500;
-            letter-spacing: 0.5px;
         }
-        /* 提交按钮 */
-        .submit-btn {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #409eff 0%, #3b82f6 100%);
+        .btn {
+            background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
             color: white;
             border: none;
-            padding: 14px;
-            border-radius: 48px;
+            padding: 14px 32px;
+            border-radius: 44px;
             font-size: 16px;
             font-weight: 600;
+            width: 100%;
             cursor: pointer;
-            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
-            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(64,158,255,0.3);
         }
-        .submit-btn:active {
-            transform: scale(0.97);
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        .btn:active {
+            transform: scale(0.98);
         }
-        .submit-btn.disabled {
+        .btn.disabled {
             background: #cbd5e1;
             box-shadow: none;
             cursor: not-allowed;
-            opacity: 0.6;
+        }
+        .error {
+            color: #f56c6c;
+            margin-top: 12px;
+            font-size: 13px;
         }
     </style>
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
 </head>
 <body>
     <div class="upload-area">
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📎 选择文件</button>
-        <input type="file" id="fileInput" style="display: none;" multiple>
+        <div class="upload-icon">📎</div>
+        <h3>选择本地文件</h3>
+        <div class="sub">支持 PDF、Word、Excel、图片等</div>
+        <input type="file" id="fileInput" class="file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" />
+        <button class="btn" id="selectBtn">选择文件</button>
+        <div id="errorMsg" class="error"></div>
     </div>
-    <div class="file-list" id="fileList">
-        <div class="empty-tip">📂 暂无文件，点击上方按钮上传</div>
-    </div>
-    <div id="toast" class="toast"></div>
 
-    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
     <script>
-        function getUrlParam(name) {
-            const reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
-            const r = window.location.search.substr(1).match(reg);
-            return r ? decodeURIComponent(r[2]) : null;
-        }
-        const token = getUrlParam('token');
-        const UPLOAD_URL = 'https://xglwx.siglenlift.cn/testfile/api/Upload';
+        const MAX_SIZE = 20 * 1024 * 1024;
         
-        let successFiles = [];
-
-        function showToast(msg, isError = false) {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.style.backgroundColor = isError ? 'rgba(239, 68, 68, 0.9)' : 'rgba(0, 0, 0, 0.75)';
-            toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 2000);
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            setTimeout(() => { el.textContent = ''; }, 3000);
         }
 
-        function formatFileSize(bytes) {
-            if (!bytes) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        function getFileType(filename) {
+            const ext = filename.split('.').pop()?.toLowerCase() || '';
+            const typeMap = {
+                'pdf': 'application/pdf',
+                'doc': 'application/msword',
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'xls': 'application/vnd.ms-excel',
+                'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'png': 'image/png',
+                'txt': 'text/plain'
+            };
+            return typeMap[ext] || 'application/octet-stream';
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        function updateSubmitButton() {
-            const submitBtn = document.getElementById('submitBtn');
-            if (submitBtn) {
-                if (successFiles.length === 0) {
-                    submitBtn.classList.add('disabled');
-                    submitBtn.disabled = true;
+        function readAndSend(file) {
+            if (file.size > MAX_SIZE) {
+                showError(`文件不能超过 20MB`);
+                return false;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                const pureBase64 = base64.split(',')[1];
+                
+                const fileData = {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || getFileType(file.name),
+                    base64: pureBase64
+                };
+                
+                if (window.wx && window.wx.miniProgram) {
+                    window.wx.miniProgram.postMessage({
+                        data: { type: 'file_selected', file: fileData }
+                    });
+                    
+                    setTimeout(() => {
+                        window.wx.miniProgram.navigateBack({ delta: 1 });
+                    }, 100);
                 } else {
-                    submitBtn.classList.remove('disabled');
-                    submitBtn.disabled = false;
-                }
-            }
-        }
-
-        function renderFileList() {
-            const container = document.getElementById('fileList');
-            if (successFiles.length === 0) {
-                container.innerHTML = '<div class="empty-tip">📂 暂无文件，点击上方按钮上传</div>';
-                updateSubmitButton();
-                return;
-            }
-            
-            let html = '';
-            successFiles.forEach((file, index) => {
-                html += `
-                    <div class="file-item" data-index="${index}">
-                        <div class="file-info">
-                            <div class="file-name">📄 ${escapeHtml(file.name)}</div>
-                            <div class="file-size">${file.size}</div>
-                        </div>
-                        <button class="delete-btn" data-index="${index}">🗑️</button>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-            
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const idx = parseInt(btn.getAttribute('data-index'));
-                    if (!isNaN(idx) && idx >= 0 && idx < successFiles.length) {
-                        successFiles.splice(idx, 1);
-                        renderFileList();
-                        showToast('删除成功');
-                    }
-                });
-            });
-            
-            updateSubmitButton();
-        }
-
-        function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', UPLOAD_URL, true);
-            if (token) {
-                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-            }
-
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    try {
-                        const result = JSON.parse(xhr.responseText);
-                        const fileUrl = result.data?.url || result.url || result.fileUrl || '';
-                        
-                        if (fileUrl) {
-                            successFiles.push({
-                                name: file.name,
-                                url: fileUrl,
-                                size: formatFileSize(file.size)
-                            });
-                            renderFileList();
-                            showToast(`上传成功`);
-                        } else {
-                            showToast(`上传失败`, true);
-                        }
-                    } catch (e) {
-                        showToast(`上传失败`, true);
-                    }
-                } else {
-                    showToast(`上传失败`, true);
+                    showError('不在小程序环境中');
                 }
             };
-
-            xhr.onerror = function() {
-                showToast(`上传失败`, true);
+            
+            reader.onerror = function() {
+                showError('文件读取失败');
             };
-
-            xhr.send(formData);
+            
+            reader.readAsDataURL(file);
+            return true;
         }
 
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const files = Array.from(e.target.files);
-            if (files.length === 0) return;
-            showToast(`⏳ 开始上传 ${files.length} 个文件...`);
-            files.forEach(file => uploadFile(file));
-            e.target.value = '';
+        const selectBtn = document.getElementById('selectBtn');
+        const fileInput = document.getElementById('fileInput');
+        
+        selectBtn.addEventListener('click', () => {
+            fileInput.click();
         });
-
-        function finishAndReturn() {
-            if (successFiles.length === 0) {
-                showToast('请先上传文件', true);
-                return;
-            }
-            
-            if (window.wx && window.wx.miniProgram) {
-                const filesToSend = successFiles.map(f => ({ 
-                    name: f.name, 
-                    url: f.url, 
-                    size: f.size 
-                }));
-                window.wx.miniProgram.postMessage({
-                    data: { type: 'upload_success', files: filesToSend }
-                });
-                setTimeout(() => {
-                    window.wx.miniProgram.navigateBack();
-                }, 150);
-            } else {
-                alert('请在微信小程序中使用');
-            }
-        }
-
-        const submitBtn = document.createElement('button');
-        submitBtn.id = 'submitBtn';
-        submitBtn.innerText = '提交';
-        submitBtn.className = 'submit-btn disabled';
-        submitBtn.disabled = true;
-        submitBtn.onclick = finishAndReturn;
-        document.body.appendChild(submitBtn);
         
-        renderFileList();
-        console.log('页面初始化完成，上传地址:', UPLOAD_URL);
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            selectBtn.disabled = true;
+            selectBtn.textContent = '处理中...';
+            selectBtn.classList.add('disabled');
+            
+            readAndSend(file);
+            
+            fileInput.value = '';
+            
+            setTimeout(() => {
+                selectBtn.disabled = false;
+                selectBtn.textContent = '选择文件';
+                selectBtn.classList.remove('disabled');
+            }, 2000);
+        });
     </script>
 </body>
 </html>
